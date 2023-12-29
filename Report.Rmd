@@ -1,0 +1,251 @@
+
+{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+
+# Load necessary libraries
+library(readr)  # For reading CSV files
+library(dplyr)
+library(leaflet)
+library(sf)
+library(ggplot2)
+library(htmlwidgets)
+
+
+
+
+# We will load  the dataset and handle any missing values
+data <- read.csv('Dataset.csv', skip = 4)
+data[is.na(data)] <- 0
+data
+
+
+
+# Selecting data only for Indonesia
+indonesia_data <- filter(data, `Country.Name` == 'Indonesia')
+indonesia_data
+
+
+Checking energy consumption per Year
+
+
+# Extracting columns containing time series data
+years <- names(indonesia_data)[5:(ncol(indonesia_data) - 1)]
+
+# Cleaning year names by removing 'X' prefix
+cleaned_years <- gsub("X", "", years)
+
+# Converting cleaned years to datetime format
+cleaned_years <- as.Date(cleaned_years, format = "%Y")
+
+# Extracting time series data for Indonesia
+ts_data <- as.numeric(as.vector(indonesia_data[1, 5:(ncol(indonesia_data) - 1)]))
+
+# Handling non-finite values (if any)
+ts_data[!is.finite(ts_data)] <- NA  # Replace non-finite values with NA
+
+# Plotting the time series (using cleaned year names)
+plot(cleaned_years[!is.na(ts_data)], ts_data[!is.na(ts_data)], type = 'o', 
+     xlab = 'Year', ylab = 'Electric power consumption (kWh per capita)',
+     main = 'Electric power consumption in Indonesia (kWh per capita)')
+
+
+Showing all power plants on the map, you can open the "power_plants_map.html" in the folder or directory where this program run.
+
+
+# Load the power plant data
+power_plants_data <- read_csv('global_power_plant_database.csv')
+
+# Filter data for power plants in Indonesia
+indonesia_power_plants <- power_plants_data[power_plants_data$country == 'IDN', ]
+
+# Create a map centered around Indonesia
+indonesia_map <- leaflet() %>%
+  setView(lng = 117, lat = -2.5, zoom = 5)  # Adjust coordinates and zoom level as needed
+
+# Add power plant locations as markers on the map
+for (i in 1:nrow(indonesia_power_plants)) {
+  indonesia_map <- addMarkers(indonesia_map,
+                              lng = indonesia_power_plants[i, ]$longitude,
+                              lat = indonesia_power_plants[i, ]$latitude,
+                              popup = indonesia_power_plants[i, ]$name)
+}
+
+# Save the map as an HTML file
+saveWidget(indonesia_map, file = "power_plants_map.html", selfcontained = TRUE)
+
+
+
+
+getting the Admninstrative bounderies of the  Indonesia
+
+shapefile_path <- 'gadm41_IDN_1.shp'
+
+# Reading  the shapefile data using sf command 
+indonesia_map <- st_read(dsn = shapefile_path)
+
+# Plotting the map of Indonesia
+ggplot() +
+  geom_sf(data = indonesia_map, color = 'red', fill = 'white') +
+  theme_minimal() +
+  labs(title = 'Administrative Boundaries of Indonesia') +
+  theme(axis.text = element_blank(),
+        axis.title = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        panel.border = element_blank(),
+        panel.background = element_blank())
+
+
+
+
+
+library(leaflet)
+library(readr)
+library(dplyr)
+
+# Load the power plant data
+power_plants_data <- read_csv('global_power_plant_database.csv')
+
+# Filter data for power plants in Indonesia
+indonesia_power_plants <- power_plants_data[power_plants_data$country == 'IDN', ]
+
+# Create a map centered around Indonesia
+indonesia_map <- leaflet() %>%
+  setView(lng = 117, lat = -2.5, zoom = 5)  # Adjust coordinates and zoom level as needed
+
+# Add power plant locations as markers on the map
+for (i in 1:nrow(indonesia_power_plants)) {
+  indonesia_map <- addMarkers(indonesia_map,
+                              lng = indonesia_power_plants[i, ]$longitude,
+                              lat = indonesia_power_plants[i, ]$latitude,
+                              popup = indonesia_power_plants[i, ]$name)
+}
+
+# Generate a grid of all locations in Indonesia
+all_locations <- expand.grid(
+  Longitude = seq(94, 141, by = 0.5),  # Adjust range according to your data
+  Latitude = seq(-11, 6, by = 0.5)  # Adjust range according to your data
+)
+
+if ("Longitude" %in% colnames(locations_without_power_plants) && "Latitude" %in% colnames(locations_without_power_plants)) {
+  # Create a map centered around Indonesia
+  indonesia_map <- leaflet() %>%
+    setView(lng = 117, lat = -2.5, zoom = 5)  # Adjust coordinates and zoom level as needed
+  
+  # Add locations without power plants as markers on the map
+  for (i in 1:nrow(locations_without_power_plants)) {
+    icon <- makeIcon(iconUrl = "https://cdn.icon-icons.com/icons2/1465/PNG/512/338camera-photography_100451.png", iconWidth = 25, iconHeight = 25)
+    
+    indonesia_map <- addMarkers(indonesia_map,
+                                lng = locations_without_power_plants[i, ]$Longitude,
+                                lat = locations_without_power_plants[i, ]$Latitude,
+                                popup = "No Power Plant",
+                                icon = icon)
+  }
+  
+  # Save the map with locations without power plants as an HTML file
+  saveWidget(indonesia_map, file = "locations_without_power_plants_map.html", selfcontained = TRUE)
+} else {
+  cat("The dataset of power plants doesn't contain longitude and latitude columns.\n")
+}
+
+
+Places without out powerplants
+
+library(sf)
+library(leaflet)
+library(dplyr)
+
+# Load the shapefile of Indonesia
+indonesia_shapefile <- st_read('gadm41_IDN_1.shp')
+
+# Load the power plant data
+power_plants_data <- read_csv('global_power_plant_database.csv')
+
+# Filter data for power plants in Indonesia
+indonesia_power_plants <- power_plants_data[power_plants_data$country == 'IDN', ]
+
+indonesia_power_plants
+
+
+# Assuming power plant data has longitude and latitude columns
+power_plants_sf <- st_as_sf(indonesia_power_plants, coords = c("longitude", "latitude"), crs = st_crs(indonesia_shapefile))
+power_plants_sf
+
+
+
+colnames(power_plants_sf)
+
+
+# Regions in Indonesia without power plants
+regions_without_power_plants <- st_difference(indonesia_shapefile, st_union(power_plants_sf))
+regions_without_power_plants
+
+
+
+summary(regions_without_power_plants)
+
+
+# Filter data for power plants in Indonesia
+indonesia_power_plants <- power_plants_data[power_plants_data$country == 'IDN', ]
+
+indonesia_power_plants
+
+# Assuming power plant data has longitude and latitude columns
+power_plants_sf <- st_as_sf(indonesia_power_plants, coords = c("longitude", "latitude"), crs = st_crs(indonesia_shapefile))
+power_plants_sf
+# Regions in Indonesia without power plants
+regions_without_power_plants <- st_difference(indonesia_shapefile, st_union(power_plants_sf))
+regions_without_power_plants
+
+
+
+library(leaflet)
+library(sf)
+
+# Load the shapefile of Indonesia
+indonesia_shapefile <- st_read("gadm41_IDN_1.shp")
+
+# Assuming power_plants_data is your dataset of power plant information
+# Filter data for power plants in Indonesia
+indonesia_power_plants <- power_plants_data[power_plants_data$country == 'IDN', ]
+
+# Assuming power plant data has longitude and latitude columns
+power_plants_sf <- st_as_sf(indonesia_power_plants, coords = c("longitude", "latitude"), crs = st_crs(indonesia_shapefile))
+
+# Regions in Indonesia without power plants
+regions_without_power_plants <- st_difference(indonesia_shapefile, st_union(power_plants_sf))
+
+# Create a map of regions in Indonesia without power plants
+regions_without_power_plants_map <- leaflet() %>%
+  addProviderTiles("CartoDB.Positron") %>%
+  addPolygons(data = regions_without_power_plants, fillColor = "lightblue", fillOpacity = 0.6,
+              color = "black", stroke = TRUE) %>%
+  setView(lng = 117, lat = -2.5, zoom = 5)
+
+# Save the map of regions without power plants as an HTML file
+saveWidget(regions_without_power_plants_map, file = "regions_without_power_plants_map.html", selfcontained = TRUE)
+
+
+
+# Plot the map
+leaflet() %>%
+  addPolygons(data = regions_without_power_plants, fillColor = "lightblue", fillOpacity = 0.6,
+              color = "black", stroke = TRUE) %>%
+  setView(lng = 117, lat = -2.5, zoom = 5)  # Center the map around Indonesia
+
+
+library(htmlwidgets)
+library(leaflet)
+
+indonesia_map <- leaflet() %>%
+  addPolygons(data = regions_without_power_plants, fillColor = "lightblue", fillOpacity = 0.6,
+              color = "black", stroke = TRUE) %>%
+  setView(lng = 117, lat = -2.5, zoom = 5)  # Center the map around Indonesia
+
+saveWidget(indonesia_map, file = "indonesia_without_power_plants_map.html", selfcontained = TRUE)
+
+
+
+
